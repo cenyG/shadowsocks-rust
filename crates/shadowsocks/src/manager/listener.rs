@@ -33,6 +33,7 @@ impl ManagerListener {
 
     pub async fn send_to<P: ManagerProtocol>(&mut self, data: &P, target: &ManagerSocketAddr) -> Result<(), Error> {
         let buf = data.to_bytes()?;
+
         let n = self.socket.send_to(&buf, target).await?;
         if n != buf.len() {
             warn!("manager send_to {} bytes != buffer {} bytes", n, buf.len());
