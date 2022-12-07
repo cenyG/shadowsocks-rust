@@ -198,7 +198,7 @@ impl ManagerProtocol for ListResponsePart {
     fn to_bytes(&self) -> Result<Vec<u8>, Error> {
         let is_last: u8 = unsafe { mem::transmute(false) };
         let mut buf: Vec<u8> = vec![is_last, self.seq, self.parts];
-        let mut data = serde_json::to_vec(self)?;
+        let mut data = serde_json::to_vec(&self.data)?;
 
         buf.append(&mut data);
         buf.push(b'\n');
