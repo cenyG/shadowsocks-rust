@@ -218,9 +218,14 @@ impl Manager {
                     println!("{:?}", rsp_parts);
                     println!("len: {}", rsp_parts.len());
                     
-                    for ele in rsp_parts {
-                        let _ = listener.send_to(&ele, &peer_addr).await;
+                    if rsp_parts.len() == 0 {
+                        let _ = listener.send_to(&ListResponsePart{data: [], is_last: true, parts: 0, seq: 0}, &peer_addr).await;
+                    } else {
+                        for ele in rsp_parts {
+                            let _ = listener.send_to(&ele, &peer_addr).await;
+                        }
                     }
+
                 }
                 ManagerRequest::Ping(..) => {
                     let rsp = self.handle_ping().await;
