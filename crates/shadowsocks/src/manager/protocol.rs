@@ -187,7 +187,7 @@ pub struct ListResponsePart {
 
 impl ManagerProtocol for ListResponsePart {
     fn from_bytes(buf: &[u8]) -> Result<Self, Error> {
-        let req = serde_json::from_slice(buf)?;
+        let req = serde_json::from_slice(&buf[3..])?;
         Ok(req)
     }
 
