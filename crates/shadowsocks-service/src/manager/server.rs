@@ -198,7 +198,7 @@ impl Manager {
                 }
                 ManagerRequest::List(..) => {
                     let rsp = self.handle_list().await;
-                    let rsp_chunks = rsp.servers.chunks(20);
+                    let rsp_chunks = rsp.servers.chunks(10);
                     let mut rsp_parts: Vec<ListResponsePart> = vec![];
 
                     let parts: u8 = rsp_chunks.len() as u8;
