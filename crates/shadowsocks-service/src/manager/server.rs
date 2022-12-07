@@ -201,6 +201,8 @@ impl Manager {
 
                     // todo
                     println!("{:?}", rsp);
+                    println!("len: {}", rsp.stat.len());
+
                     let _ = listener.send_to(&rsp, &peer_addr).await;
                 }
                 ManagerRequest::Ping(..) => {
@@ -208,6 +210,8 @@ impl Manager {
 
                     // todo
                     println!("{:?}", rsp);
+                    println!("len: {}", rsp.stat.len());
+
                     let _ = listener.send_to(&rsp, &peer_addr).await;
                 }
                 ManagerRequest::Stat(ref stat) => self.handle_stat(stat).await,
