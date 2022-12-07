@@ -201,7 +201,7 @@ impl Manager {
 
                     // todo
                     println!("{:?}", rsp);
-                    println!("len: {}", rsp.stat.len());
+                    println!("len: {}", rsp.servers.len());
 
                     let _ = listener.send_to(&rsp, &peer_addr).await;
                 }
