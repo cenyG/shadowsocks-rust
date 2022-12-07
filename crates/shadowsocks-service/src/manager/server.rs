@@ -198,13 +198,13 @@ impl Manager {
                 }
                 ManagerRequest::List(..) => {
                     let rsp = self.handle_list().await;
-                    let mut rsp_chunks = rsp.servers.chunks(200);
+                    let rsp_chunks = rsp.servers.chunks(200);
                     let mut rsp_parts: Vec<ListResponsePart> = vec![];
 
+                    let parts: u8 = rsp_chunks.len() as u8;
                     let mut counter: u8 = 0;
                     for ele in rsp_chunks {
-                        let parts = rsp_chunks.len() as u8;
-                        let is_last = (rsp_chunks.len() - 1) == counter;
+                        let is_last = (parts - 1) == counter;
                         rsp_parts.push(ListResponsePart { data: ListResponse { servers: ele.to_vec() }, seq: counter, is_last, parts});
                         
                         counter = counter + 1;
