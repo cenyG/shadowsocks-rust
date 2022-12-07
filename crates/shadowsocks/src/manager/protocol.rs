@@ -4,7 +4,7 @@ use std::{
     collections::HashMap,
     io::{self, ErrorKind},
     str,
-    string::ToString,
+    string::ToString, mem,
 };
 
 use serde::{Deserialize, Serialize};
@@ -172,6 +172,33 @@ impl ManagerProtocol for ListResponse {
     fn to_bytes(&self) -> Result<Vec<u8>, Error> {
         let mut buf = serde_json::to_vec(self)?;
         buf.push(b'\n');
+        Ok(buf)
+    }
+}
+
+/// `list` response part
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ListResponsePart {
+    pub data: ListResponse,
+    pub parts: u8,
+    pub seq: u8,
+    pub is_last: bool,
+}
+
+impl ManagerProtocol for ListResponsePart {
+    fn from_bytes(buf: &[u8]) -> Result<Self, Error> {
+        let req = serde_json::from_slice(buf)?;
+        Ok(req)
+    }
+
+    fn to_bytes(&self) -> Result<Vec<u8>, Error> {
+        let is_last: u8 = unsafe { mem::transmute(false) };
+        let mut buf: Vec<u8> = vec![is_last, self.seq, self.parts];
+        let mut data = serde_json::to_vec(self)?;
+        
+        buf.append(&mut data);
+        buf.push(b'\n');
+
         Ok(buf)
     }
 }

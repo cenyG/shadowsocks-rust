@@ -21,7 +21,7 @@ use shadowsocks::{
         RemoveRequest,
         RemoveResponse,
         ServerUserConfig,
-        StatRequest,
+        StatRequest, ListResponsePart,
     },
     net::{AcceptOpts, ConnectOpts},
     plugin::PluginConfig,
@@ -198,12 +198,29 @@ impl Manager {
                 }
                 ManagerRequest::List(..) => {
                     let rsp = self.handle_list().await;
+                    let mut rsp_chunks = rsp.servers.chunks(200);
+                    let mut rsp_parts: Vec<ListResponsePart> = vec![];
+
+                    let mut counter: u8 = 0;
+                    for ele in rsp_chunks {
+                        let parts = rsp_chunks.len() as u8;
+                        let is_last = (rsp_chunks.len() - 1) == counter;
+                        rsp_parts.push(ListResponsePart { data: ListResponse { servers: ele.to_vec() }, seq: counter, is_last, parts});
+                        
+                        counter = counter + 1;
+                    }
+                    
 
                     // todo
                     println!("{:?}", rsp);
                     println!("len: {}", rsp.servers.len());
 
-                    let _ = listener.send_to(&rsp, &peer_addr).await;
+                    println!("{:?}", rsp_parts);
+                    println!("len: {}", rsp_parts.len());
+                    
+                    for ele in rsp_parts {
+                        let _ = listener.send_to(&ele, &peer_addr).await;
+                    }
                 }
                 ManagerRequest::Ping(..) => {
                     let rsp = self.handle_ping().await;
