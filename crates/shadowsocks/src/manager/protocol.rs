@@ -3,8 +3,8 @@
 use std::{
     collections::HashMap,
     io::{self, ErrorKind},
-    str,
-    string::ToString, mem,
+    mem, str,
+    string::ToString,
 };
 
 use serde::{Deserialize, Serialize};
@@ -187,7 +187,11 @@ pub struct ListResponsePart {
 
 impl ManagerProtocol for ListResponsePart {
     fn from_bytes(buf: &[u8]) -> Result<Self, Error> {
-        let req = serde_json::from_slice(&buf[3..])?;
+        let req = if buf.len() > 3 {
+            serde_json::from_slice(&buf[3..])?
+        } else {
+            serde_json::from_slice(buf)?
+        };
         Ok(req)
     }
 
@@ -195,7 +199,7 @@ impl ManagerProtocol for ListResponsePart {
         let is_last: u8 = unsafe { mem::transmute(false) };
         let mut buf: Vec<u8> = vec![is_last, self.seq, self.parts];
         let mut data = serde_json::to_vec(self)?;
-        
+
         buf.append(&mut data);
         buf.push(b'\n');
 
