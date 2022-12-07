@@ -3,7 +3,7 @@
 use std::{
     collections::HashMap,
     io::{self, ErrorKind},
-    mem, str,
+    str,
     string::ToString,
 };
 
@@ -180,9 +180,8 @@ impl ManagerProtocol for ListResponse {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ListResponsePart {
     pub data: ListResponse,
-    pub parts: u8,
-    pub seq: u8,
-    pub is_last: bool,
+    pub parts: u32,
+    pub seq: u32,
 }
 
 impl ManagerProtocol for ListResponsePart {
@@ -196,8 +195,15 @@ impl ManagerProtocol for ListResponsePart {
     }
 
     fn to_bytes(&self) -> Result<Vec<u8>, Error> {
-        let is_last: u8 = unsafe { mem::transmute(false) };
-        let mut buf: Vec<u8> = vec![is_last, self.seq, self.parts];
+        let mut buf: Vec<u8> = vec![];
+        let mut seq_byte_str = self.seq.to_string().as_bytes().to_vec();
+        let mut parts_byte_str = self.parts.to_string().as_bytes().to_vec();
+
+        buf.append(&mut seq_byte_str);
+        buf.push(b'|');
+        buf.append(&mut parts_byte_str);
+        buf.push(b'|');
+
         let mut data = serde_json::to_vec(&self.data)?;
 
         buf.append(&mut data);

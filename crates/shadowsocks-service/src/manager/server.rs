@@ -201,12 +201,10 @@ impl Manager {
                     let rsp_chunks = rsp.servers.chunks(10);
                     let mut rsp_parts: Vec<ListResponsePart> = vec![];
 
-                    let parts: u8 = rsp_chunks.len() as u8;
-                    let mut counter: u8 = 0;
+                    let parts: u32 = rsp_chunks.len() as u32;
+                    let mut counter: u32 = 0;
                     for ele in rsp_chunks {
-                        let is_last = (parts - 1) == counter;
-                        rsp_parts.push(ListResponsePart { data: ListResponse { servers: ele.to_vec() }, seq: counter, is_last, parts});
-                        
+                        rsp_parts.push(ListResponsePart { data: ListResponse { servers: ele.to_vec() }, seq: counter, parts});
                         counter = counter + 1;
                     }
                     
@@ -219,7 +217,7 @@ impl Manager {
                     println!("len: {}", rsp_parts.len());
                     
                     if rsp_parts.len() == 0 {
-                        let _ = listener.send_to(&ListResponsePart{data: ListResponse { servers: vec![] }, is_last: true, parts: 0, seq: 0}, &peer_addr).await;
+                        let _ = listener.send_to(&ListResponsePart{data: ListResponse { servers: vec![] }, parts: 0, seq: 0}, &peer_addr).await;
                     } else {
                         for ele in rsp_parts {
                             let _ = listener.send_to(&ele, &peer_addr).await;
