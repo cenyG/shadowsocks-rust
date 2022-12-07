@@ -198,10 +198,16 @@ impl Manager {
                 }
                 ManagerRequest::List(..) => {
                     let rsp = self.handle_list().await;
+
+                    // todo
+                    println!("{:?}", rsp);
                     let _ = listener.send_to(&rsp, &peer_addr).await;
                 }
                 ManagerRequest::Ping(..) => {
                     let rsp = self.handle_ping().await;
+
+                    // todo
+                    println!("{:?}", rsp);
                     let _ = listener.send_to(&rsp, &peer_addr).await;
                 }
                 ManagerRequest::Stat(ref stat) => self.handle_stat(stat).await,
