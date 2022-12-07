@@ -219,7 +219,7 @@ impl Manager {
                     println!("len: {}", rsp_parts.len());
                     
                     if rsp_parts.len() == 0 {
-                        let _ = listener.send_to(&ListResponsePart{data: [], is_last: true, parts: 0, seq: 0}, &peer_addr).await;
+                        let _ = listener.send_to(&ListResponsePart{data: ListResponse { servers: vec![] }, is_last: true, parts: 0, seq: 0}, &peer_addr).await;
                     } else {
                         for ele in rsp_parts {
                             let _ = listener.send_to(&ele, &peer_addr).await;
