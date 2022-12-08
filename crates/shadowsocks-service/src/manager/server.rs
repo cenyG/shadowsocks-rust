@@ -229,8 +229,8 @@ impl Manager {
                 ManagerRequest::Ping(..) => {
                     let rsp = self.handle_ping().await;
 
-                    let rsp_chunks: Vec<u16> = rsp.stat.clone().into_keys().collect();
-                    let map_chunk: Vec<HashMap<u16, u64>> = rsp_chunks
+                    let keys: Vec<u16> = rsp.stat.clone().into_keys().collect();
+                    let map_chunk: Vec<HashMap<u16, u64>> = keys
                         .chunks(100)
                         .into_iter()
                         .map(|keys| {
@@ -245,7 +245,7 @@ impl Manager {
 
                     let mut rsp_parts: Vec<PingResponsePart> = vec![];
 
-                    let parts_count: u32 = rsp_chunks.len() as u32;
+                    let parts_count: u32 = map_chunk.len() as u32;
                     let mut counter: u32 = 0;
                     for ele in map_chunk {
                         rsp_parts.push(PingResponsePart {
