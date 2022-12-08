@@ -11,22 +11,12 @@ use shadowsocks::{
     crypto::CipherKind,
     dns_resolver::DnsResolver,
     manager::protocol::{
-        self,
-        AddRequest,
-        AddResponse,
-        ErrorResponse,
-        ListResponse,
-        ManagerRequest,
-        PingResponse,
-        RemoveRequest,
-        RemoveResponse,
-        ServerUserConfig,
-        StatRequest, ListResponsePart,
+        self, AddRequest, AddResponse, ErrorResponse, ListResponse, ListResponsePart, ManagerRequest, PingResponse,
+        PingResponsePart, RemoveRequest, RemoveResponse, ServerUserConfig, StatRequest,
     },
     net::{AcceptOpts, ConnectOpts},
     plugin::PluginConfig,
-    ManagerListener,
-    ServerAddr,
+    ManagerListener, ServerAddr,
 };
 use tokio::{sync::Mutex, task::JoinHandle};
 
@@ -204,10 +194,13 @@ impl Manager {
                     let parts: u32 = rsp_chunks.len() as u32;
                     let mut counter: u32 = 0;
                     for ele in rsp_chunks {
-                        rsp_parts.push(ListResponsePart { data: ListResponse { servers: ele.to_vec() }, seq: counter, parts});
+                        rsp_parts.push(ListResponsePart {
+                            data: ListResponse { servers: ele.to_vec() },
+                            seq: counter,
+                            parts,
+                        });
                         counter = counter + 1;
                     }
-                    
 
                     // todo
                     println!("{:?}", rsp);
@@ -215,24 +208,74 @@ impl Manager {
 
                     println!("{:?}", rsp_parts);
                     println!("len: {}", rsp_parts.len());
-                    
+
                     if rsp_parts.len() == 0 {
-                        let _ = listener.send_to(&ListResponsePart{data: ListResponse { servers: vec![] }, parts: 0, seq: 0}, &peer_addr).await;
+                        let _ = listener
+                            .send_to(
+                                &ListResponsePart {
+                                    data: ListResponse { servers: vec![] },
+                                    parts: 0,
+                                    seq: 0,
+                                },
+                                &peer_addr,
+                            )
+                            .await;
                     } else {
                         for ele in rsp_parts {
                             let _ = listener.send_to(&ele, &peer_addr).await;
                         }
                     }
-
                 }
                 ManagerRequest::Ping(..) => {
                     let rsp = self.handle_ping().await;
+
+                    let rsp_chunks: Vec<u16> = rsp.stat.clone().into_keys().collect();
+                    let map_chunk: Vec<HashMap<u16, u64>> = rsp_chunks
+                        .chunks(100)
+                        .into_iter()
+                        .map(|keys| {
+                            keys.iter()
+                                .map(|key| rsp.stat.get_key_value(key))
+                                .filter(|kv| kv.is_some())
+                                .map(|kv| kv.unwrap())
+                                .map(|kv| (*kv.0, *kv.1))
+                                .collect()
+                        })
+                        .collect();
+
+                    let mut rsp_parts: Vec<PingResponsePart> = vec![];
+
+                    let parts_count: u32 = rsp_chunks.len() as u32;
+                    let mut counter: u32 = 0;
+                    for ele in map_chunk {
+                        rsp_parts.push(PingResponsePart {
+                            data: PingResponse { stat: ele },
+                            seq: counter,
+                            parts: parts_count,
+                        });
+                        counter = counter + 1;
+                    }
 
                     // todo
                     println!("{:?}", rsp);
                     println!("len: {}", rsp.stat.len());
 
-                    let _ = listener.send_to(&rsp, &peer_addr).await;
+                    if rsp_parts.len() == 0 {
+                        let _ = listener
+                            .send_to(
+                                &PingResponsePart {
+                                    data: PingResponse { stat: HashMap::new() },
+                                    parts: 0,
+                                    seq: 0,
+                                },
+                                &peer_addr,
+                            )
+                            .await;
+                    } else {
+                        for ele in rsp_parts {
+                            let _ = listener.send_to(&ele, &peer_addr).await;
+                        }
+                    }
                 }
                 ManagerRequest::Stat(ref stat) => self.handle_stat(stat).await,
             }
