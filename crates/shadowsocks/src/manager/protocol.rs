@@ -178,6 +178,43 @@ impl ManagerProtocol for ListResponse {
     }
 }
 
+/// `list` response part
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ListResponsePart {
+    pub data: ListResponse,
+    pub parts: u32,
+    pub seq: u32,
+}
+
+impl ManagerProtocol for ListResponsePart {
+    fn from_bytes(buf: &[u8]) -> Result<Self, Error> {
+        let req = if buf.len() > 3 {
+            serde_json::from_slice(&buf[3..])?
+        } else {
+            serde_json::from_slice(buf)?
+        };
+        Ok(req)
+    }
+
+    fn to_bytes(&self) -> Result<Vec<u8>, Error> {
+        let mut buf: Vec<u8> = vec![];
+        let mut seq_byte_str = self.seq.to_string().as_bytes().to_vec();
+        let mut parts_byte_str = self.parts.to_string().as_bytes().to_vec();
+
+        buf.append(&mut seq_byte_str);
+        buf.push(b'|');
+        buf.append(&mut parts_byte_str);
+        buf.push(b'|');
+
+        let mut data = serde_json::to_vec(&self.data)?;
+
+        buf.append(&mut data);
+        buf.push(b'\n');
+
+        Ok(buf)
+    }
+}
+
 /// `ping` request
 #[derive(Debug, Clone)]
 pub struct PingRequest;
@@ -226,6 +263,51 @@ impl ManagerProtocol for PingResponse {
     fn to_bytes(&self) -> Result<Vec<u8>, Error> {
         let mut buf = b"stat: ".to_vec();
         serde_json::to_writer(&mut buf, self)?;
+        buf.push(b'\n');
+        Ok(buf)
+    }
+}
+
+/// `ping` response
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PingResponsePart {
+    pub data: PingResponse,
+    pub parts: u32,
+    pub seq: u32,
+}
+
+impl ManagerProtocol for PingResponsePart {
+    fn from_bytes(buf: &[u8]) -> Result<Self, Error> {
+        // todo needed for client?
+
+        let mut nsplit = buf.splitn(2, |b| *b == b':');
+
+        let cmd = nsplit.next().expect("first element shouldn't be None");
+        let cmd = str::from_utf8(cmd)?.trim();
+        if cmd != "stat" {
+            return Err(Error::UnrecognizedCommand(cmd.to_owned()));
+        }
+
+        match nsplit.next() {
+            None => Err(Error::MissingParameter),
+            Some(param) => {
+                let req = serde_json::from_slice(param)?;
+                Ok(req)
+            }
+        }
+    }
+
+    fn to_bytes(&self) -> Result<Vec<u8>, Error> {
+        let mut buf: Vec<u8> = vec![];
+        let mut seq_byte_str = self.seq.to_string().as_bytes().to_vec();
+        let mut parts_byte_str = self.parts.to_string().as_bytes().to_vec();
+
+        buf.append(&mut seq_byte_str);
+        buf.push(b'|');
+        buf.append(&mut parts_byte_str);
+        buf.push(b'|');
+
+        serde_json::to_writer(&mut buf, &self.data.stat)?;
         buf.push(b'\n');
         Ok(buf)
     }

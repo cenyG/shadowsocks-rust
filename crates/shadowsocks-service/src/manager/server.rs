@@ -32,6 +32,7 @@ use shadowsocks::{
     ServerAddr,
 };
 use tokio::{sync::Mutex, task::JoinHandle};
+use shadowsocks::manager::protocol::{ListResponsePart, PingResponsePart};
 
 use crate::{
     acl::AccessControl,
@@ -245,10 +246,84 @@ impl Manager {
                 ManagerRequest::List(..) => {
                     let rsp = self.handle_list().await;
                     let _ = self.listener.send_to(&rsp, &peer_addr).await;
+                    let rsp_chunks = rsp.servers.chunks(10);
+                    let mut rsp_parts: Vec<ListResponsePart> = vec![];
+
+                    let parts: u32 = rsp_chunks.len() as u32;
+                    let mut counter: u32 = 0;
+                    for ele in rsp_chunks {
+                        rsp_parts.push(ListResponsePart {
+                            data: ListResponse { servers: ele.to_vec() },
+                            seq: counter,
+                            parts,
+                        });
+                        counter = counter + 1;
+                    }
+
+                    if rsp_parts.len() == 0 {
+                        let _ = self.listener
+                            .send_to(
+                                &ListResponsePart {
+                                    data: ListResponse { servers: vec![] },
+                                    parts: 0,
+                                    seq: 0,
+                                },
+                                &peer_addr,
+                            )
+                            .await;
+                    } else {
+                        for ele in rsp_parts {
+                            let _ = self.listener.send_to(&ele, &peer_addr).await;
+                        }
+                    }
                 }
                 ManagerRequest::Ping(..) => {
                     let rsp = self.handle_ping().await;
                     let _ = self.listener.send_to(&rsp, &peer_addr).await;
+
+                    let keys: Vec<u16> = rsp.stat.clone().into_keys().collect();
+                    let map_chunk: Vec<HashMap<u16, u64>> = keys
+                        .chunks(100)
+                        .into_iter()
+                        .map(|keys| {
+                            keys.iter()
+                                .map(|key| rsp.stat.get_key_value(key))
+                                .filter(|kv| kv.is_some())
+                                .map(|kv| kv.unwrap())
+                                .map(|kv| (*kv.0, *kv.1))
+                                .collect()
+                        })
+                        .collect();
+
+                    let mut rsp_parts: Vec<PingResponsePart> = vec![];
+
+                    let parts_count: u32 = map_chunk.len() as u32;
+                    let mut counter: u32 = 0;
+                    for ele in map_chunk {
+                        rsp_parts.push(PingResponsePart {
+                            data: PingResponse { stat: ele },
+                            seq: counter,
+                            parts: parts_count,
+                        });
+                        counter = counter + 1;
+                    }
+
+                    if rsp_parts.len() == 0 {
+                        let _ = self.listener
+                            .send_to(
+                                &PingResponsePart {
+                                    data: PingResponse { stat: HashMap::new() },
+                                    parts: 0,
+                                    seq: 0,
+                                },
+                                &peer_addr,
+                            )
+                            .await;
+                    } else {
+                        for ele in rsp_parts {
+                            let _ = self.listener.send_to(&ele, &peer_addr).await;
+                        }
+                    }
                 }
                 ManagerRequest::Stat(ref stat) => self.handle_stat(stat).await,
             }
