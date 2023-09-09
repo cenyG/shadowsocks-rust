@@ -245,7 +245,6 @@ impl Manager {
                 }
                 ManagerRequest::List(..) => {
                     let rsp = self.handle_list().await;
-                    let _ = self.listener.send_to(&rsp, &peer_addr).await;
                     let rsp_chunks = rsp.servers.chunks(10);
                     let mut rsp_parts: Vec<ListResponsePart> = vec![];
 
@@ -279,8 +278,6 @@ impl Manager {
                 }
                 ManagerRequest::Ping(..) => {
                     let rsp = self.handle_ping().await;
-                    let _ = self.listener.send_to(&rsp, &peer_addr).await;
-
                     let keys: Vec<u16> = rsp.stat.clone().into_keys().collect();
                     let map_chunk: Vec<HashMap<u16, u64>> = keys
                         .chunks(100)
